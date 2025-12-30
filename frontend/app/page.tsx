@@ -207,7 +207,7 @@ export default function Home() {
   };
 
   const handleGenerate = async () => {
-    if (!text.trim() || text.length > 5000) return;
+    if (!text.trim() || text.length > 50000) return;
     setLoading(true);
     setError(null);
 
@@ -346,8 +346,8 @@ export default function Home() {
                 autoFocus
               />
               <div className="flex justify-end mt-4">
-                <span className={`text-xs ${text.length > 5000 ? 'text-red-500 font-bold' : 'text-zinc-600'}`}>
-                  {text.length}/5000 characters
+                <span className={`text-xs ${text.length > 50000 ? 'text-red-500 font-bold' : 'text-zinc-600'}`}>
+                  {text.length}/50000 characters
                 </span>
               </div>
             </div>
@@ -355,10 +355,10 @@ export default function Home() {
 
           <button
             onClick={handleGenerate}
-            disabled={!text.trim() || loading || text.length > 5000}
+            disabled={!text.trim() || loading || text.length > 50000}
             className={`
                     w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all
-                    ${!text.trim() || loading || text.length > 5000
+                    ${!text.trim() || loading || text.length > 50000
                 ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
                 : 'bg-white text-zinc-950 hover:bg-zinc-200 shadow-xl shadow-white/10 hover:scale-[1.02] active:scale-[0.98]'
               }
