@@ -90,7 +90,7 @@ export default function DocxAutomator() {
             // Auto download
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${fileState.file.name.replace('.docx', '')}_assets.zip`;
+            a.download = `${fileState.file.name.replace('.docx', '')}.zip`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -104,38 +104,13 @@ export default function DocxAutomator() {
         if (isProcessingBatch) return;
         setIsProcessingBatch(true);
         
-        // Find all pending or errored files
-        // We need to re-evaluate this array based on latest state if we process sequentially
-        // Actually, we can just iterate and process one by one
-        let hasPending = true;
-        
-        while (hasPending) {
-            // Read latest state using a functional update pattern or just by reading from a ref,
-            // but since handleProcessAll runs and reads from closure, fileStates won't update in this scope.
-            // Better to use state updater or a ref.
+        const pendingIndices = fileStates
+            .map((fs, idx) => ({ fs, idx }))
+            .filter(({ fs }) => fs.status === 'pending' || fs.status === 'error')
+            .map(({ idx }) => idx);
             
-            let nextIndexToProcess = -1;
-            setFileStates(current => {
-                nextIndexToProcess = current.findIndex(fs => fs.status === 'pending' || fs.status === 'error');
-                return current;
-            });
-            
-            if (nextIndexToProcess === -1) {
-                hasPending = false;
-                break;
-            }
-            
-            // Wait for this specific file to finish
-            // To do this properly, we need to pass the file from the current state.
-            let fileToProcess = undefined;
-            setFileStates(current => {
-                fileToProcess = current[nextIndexToProcess];
-                return current;
-            });
-            
-            if (fileToProcess) {
-                await processFile(fileToProcess, nextIndexToProcess);
-            }
+        for (const idx of pendingIndices) {
+            await processFile(fileStates[idx], idx);
         }
         
         setIsProcessingBatch(false);
