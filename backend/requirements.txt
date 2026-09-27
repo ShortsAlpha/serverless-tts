@@ -1,3 +1,5 @@
 edge-tts
 boto3
 modal
+python-docx
+python-multipart
