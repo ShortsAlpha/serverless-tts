@@ -353,22 +353,36 @@ async def process_docx_endpoint(file: UploadFile = File(...)):
     if not scenes:
         return {"status": "error", "message": "No scenes found in the document"}
 
-    async def generate_tts(text, filename):
-        communicate = edge_tts.Communicate(text, "en-US-AriaNeural")
+    sem = asyncio.Semaphore(5)
+
+    async def generate_tts_for_scene(scene):
+        script = scene["script"].strip()
+        filename = f"{scene['id']}.mp3"
+        chunks = split_text_into_chunks(script)
         audio_bytes = b""
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_bytes += chunk["data"]
+        
+        for chunk in chunks:
+            async with sem:
+                communicate = edge_tts.Communicate(chunk, "en-US-AriaNeural")
+                async for data in communicate.stream():
+                    if data["type"] == "audio":
+                        audio_bytes += data["data"]
         return filename, audio_bytes
 
     tts_tasks = []
     for scene in scenes:
-        script = scene["script"].strip()
-        if script:
-            filename = f"{scene['id']}.mp3"
-            tts_tasks.append(generate_tts(script, filename))
+        if scene["script"].strip():
+            tts_tasks.append(generate_tts_for_scene(scene))
             
-    tts_results = await asyncio.gather(*tts_tasks)
+    tts_results = await asyncio.gather(*tts_tasks, return_exceptions=True)
+    
+    # Filter out exceptions from results
+    valid_tts_results = []
+    for res in tts_results:
+        if isinstance(res, Exception):
+            print(f"Error generating TTS for scene: {res}")
+        else:
+            valid_tts_results.append(res)
     
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
@@ -380,7 +394,7 @@ async def process_docx_endpoint(file: UploadFile = File(...)):
                 img_name = f"{scene['id']}_{img_idx + 1}{ext}"
                 zip_file.writestr(img_name, img_bytes)
                 
-        for filename, audio_bytes in tts_results:
+        for filename, audio_bytes in valid_tts_results:
             if audio_bytes:
                 zip_file.writestr(filename, audio_bytes)
             
